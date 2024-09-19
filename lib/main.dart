@@ -26,9 +26,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   FilteringOptions? selectedOption = FilteringOptions.all;
-  List<Task> todoItems = [
-    Task("Handla mat"),//DETTA SKALL BORT
-  ];
+  List<Task> todoItems = [];
 
   List<Task> getFilteredTasks() {
     if (selectedOption == FilteringOptions.done) {
@@ -82,6 +80,11 @@ class _MyHomePageState extends State<MyHomePage> {
               filteredTasks[index].isCompleted = newValue;
             });
           },
+          onDelete: () {
+            setState(() {
+              todoItems.remove(filteredTasks[index]);
+            });
+          },
         ),
         separatorBuilder: (context, index) => const Divider(),
       ),
@@ -112,9 +115,14 @@ class _MyHomePageState extends State<MyHomePage> {
 class TaskItem extends StatelessWidget {
   final Task task;
   final ValueChanged<bool> onChanged;
+  final VoidCallback onDelete;
 
-  const TaskItem({Key? key, required this.task, required this.onChanged})
-      : super(key: key);
+  const TaskItem({
+    Key? key,
+    required this.task,
+    required this.onChanged,
+    required this.onDelete,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -144,17 +152,14 @@ class TaskItem extends StatelessWidget {
             ),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.only(right: 13),
-          child: Icon(Icons.close),
+        Padding(
+          padding: const EdgeInsets.only(right: 13),
+          child: GestureDetector(
+            onTap: onDelete,
+            child: Icon(Icons.close),
+          ),
         ),
       ],
     );
   }
 }
-
-
-//ToDo:
-//Kunna skriva in från sida 2 så det läggs in i TODO-listan
-//Radera tasks
-//Snygga till designen?
