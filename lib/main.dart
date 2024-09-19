@@ -33,8 +33,18 @@ class _MyHomePageState extends State<MyHomePage> {
     Task("Städa")
   ];
 
+  List<Task> getFilteredTasks() {
+    if (selectedOption == FilteringOptions.done) {
+      return todoItems.where((task) => task.isCompleted).toList();
+    } else if (selectedOption == FilteringOptions.undone) {
+      return todoItems.where((task) => !task.isCompleted).toList();
+    }
+    return todoItems;
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<Task> filteredTasks = getFilteredTasks();
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -67,12 +77,12 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: ListView.separated(
-        itemCount: todoItems.length,
+        itemCount: filteredTasks.length,
         itemBuilder: (context, index) => TaskItem(
-          task: todoItems[index],
+          task: filteredTasks[index],
           onChanged: (newValue) {
             setState(() {
-              todoItems[index].isCompleted = newValue;
+              filteredTasks[index].isCompleted = newValue;
             });
           },
         ),
