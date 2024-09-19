@@ -12,14 +12,26 @@ void main() {
   );
 }
 
+class Task {
+  String title;
+  bool isCompleted;
+
+  Task(this.title, {this.isCompleted = false});
+}
+
 class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool? value = false;
-  FilteringOptions? selectedOption;
+  FilteringOptions? selectedOption = FilteringOptions.all;
+  List<Task> todoItems = [
+    Task("Köpa glass"),
+    Task("Köpa Banan"),
+    Task("Göra läxan"),
+    Task("Städa")
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +66,17 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          TaskItem("Handla mjölk"),
-          Divider(),
-          TaskItem("Klippa gräset"),
-          Divider(),
-          TaskItem("Tvätta"),
-          Divider(),
-        ],
+      body: ListView.separated(
+        itemCount: todoItems.length,
+        itemBuilder: (context, index) => TaskItem(
+          task: todoItems[index],
+          onChanged: (newValue) {
+            setState(() {
+              todoItems[index].isCompleted = newValue;
+            });
+          },
+        ),
+        separatorBuilder: (context, index) => const Divider(),
       ),
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
@@ -76,9 +90,19 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
+}
 
-  Row TaskItem(String taskTitle) {
+class TaskItem extends StatelessWidget {
+  final Task task;
+  final ValueChanged<bool> onChanged;
+
+  const TaskItem({Key? key, required this.task, required this.onChanged})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
+      key: ObjectKey(task.title),
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -88,16 +112,15 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Row(
               children: [
                 Checkbox(
-                    value: value,
-                    onChanged: (bool? newValue) => {
-                          setState(() {
-                            value = newValue;
-                          })
-                        }),
-                Text(taskTitle,
+                  value: task.isCompleted,
+                  onChanged: (newValue) {
+                    onChanged(newValue ?? false);
+                  },
+                ),
+                Text(task.title,
                     style: TextStyle(
                         fontSize: 21,
-                        decoration: value == true
+                        decoration: task.isCompleted
                             ? TextDecoration.lineThrough
                             : TextDecoration.none)),
               ],
@@ -112,3 +135,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+
+//ToDo:
+//Kunna skriva in från sida 2 så det läggs in i TODO-listan
+//Lösa så att man kan filtrera
+//Snygga till designen?
