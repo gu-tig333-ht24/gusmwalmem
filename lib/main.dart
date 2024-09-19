@@ -27,10 +27,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   FilteringOptions? selectedOption = FilteringOptions.all;
   List<Task> todoItems = [
-    Task("Köpa glass"),
-    Task("Köpa Banan"),
-    Task("Göra läxan"),
-    Task("Städa")
+    Task("Handla mat"),//DETTA SKALL BORT
   ];
 
   List<Task> getFilteredTasks() {
@@ -92,7 +89,17 @@ class _MyHomePageState extends State<MyHomePage> {
         shape: const CircleBorder(),
         onPressed: () {
           Navigator.push(
-              context, MaterialPageRoute(builder: (context) => AddTaskView()));
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddTaskView(
+                onAddTask: (taskTitle) {
+                  setState(() {
+                    todoItems.add(Task(taskTitle));
+                  });
+                },
+              ),
+            ),
+          );
         },
         backgroundColor: Colors.grey,
         child: const Icon(Icons.add, size: 50, color: Colors.white),
@@ -149,5 +156,5 @@ class TaskItem extends StatelessWidget {
 
 //ToDo:
 //Kunna skriva in från sida 2 så det läggs in i TODO-listan
-//Lösa så att man kan filtrera
+//Radera tasks
 //Snygga till designen?
