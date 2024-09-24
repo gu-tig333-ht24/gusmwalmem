@@ -12,17 +12,34 @@ void main() {
   );
 }
 
+class Task {
+  String title;
+  bool isCompleted;
+
+  Task(this.title, {this.isCompleted = false});
+}
+
 class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool? value = false;
-  FilteringOptions? selectedOption;
+  FilteringOptions? selectedOption = FilteringOptions.all;
+  List<Task> todoItems = [];
+
+  List<Task> getFilteredTasks() {
+    if (selectedOption == FilteringOptions.done) {
+      return todoItems.where((task) => task.isCompleted).toList();
+    } else if (selectedOption == FilteringOptions.undone) {
+      return todoItems.where((task) => !task.isCompleted).toList();
+    }
+    return todoItems;
+  }
 
   @override
   Widget build(BuildContext context) {
+    List<Task> filteredTasks = getFilteredTasks();
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -54,21 +71,38 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          TaskItem("Handla mjölk"),
-          Divider(),
-          TaskItem("Klippa gräset"),
-          Divider(),
-          TaskItem("Tvätta"),
-          Divider(),
-        ],
+      body: ListView.separated(
+        itemCount: filteredTasks.length,
+        itemBuilder: (context, index) => TaskItem(
+          task: filteredTasks[index],
+          onChanged: (newValue) {
+            setState(() {
+              filteredTasks[index].isCompleted = newValue;
+            });
+          },
+          onDelete: () {
+            setState(() {
+              todoItems.remove(filteredTasks[index]);
+            });
+          },
+        ),
+        separatorBuilder: (context, index) => const Divider(),
       ),
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
         onPressed: () {
           Navigator.push(
-              context, MaterialPageRoute(builder: (context) => AddTaskView()));
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddTaskView(
+                onAddTask: (taskTitle) {
+                  setState(() {
+                    todoItems.add(Task(taskTitle));
+                  });
+                },
+              ),
+            ),
+          );
         },
         backgroundColor: Colors.grey,
         child: const Icon(Icons.add, size: 50, color: Colors.white),
@@ -76,9 +110,24 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
+}
 
-  Row TaskItem(String taskTitle) {
+class TaskItem extends StatelessWidget {
+  final Task task;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback onDelete;
+
+  const TaskItem({
+    Key? key,
+    required this.task,
+    required this.onChanged,
+    required this.onDelete,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
+      key: ObjectKey(task.title),
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -88,25 +137,27 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Row(
               children: [
                 Checkbox(
-                    value: value,
-                    onChanged: (bool? newValue) => {
-                          setState(() {
-                            value = newValue;
-                          })
-                        }),
-                Text(taskTitle,
+                  value: task.isCompleted,
+                  onChanged: (newValue) {
+                    onChanged(newValue ?? false);
+                  },
+                ),
+                Text(task.title,
                     style: TextStyle(
                         fontSize: 21,
-                        decoration: value == true
+                        decoration: task.isCompleted
                             ? TextDecoration.lineThrough
                             : TextDecoration.none)),
               ],
             ),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.only(right: 13),
-          child: Icon(Icons.close),
+        Padding(
+          padding: const EdgeInsets.only(right: 13),
+          child: GestureDetector(
+            onTap: onDelete,
+            child: Icon(Icons.close),
+          ),
         ),
       ],
     );
