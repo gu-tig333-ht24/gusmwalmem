@@ -11,8 +11,16 @@ class AddTaskView extends StatefulWidget {
 class _AddTaskViewState extends State<AddTaskView> {
   String newTaskTitle = "";
   final Function(String taskTitle)? onAddTask;
+  final TextEditingController _controller = TextEditingController();
   _AddTaskViewState({this.onAddTask});
   // const AddTaskView({super.key});
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,21 +33,18 @@ class _AddTaskViewState extends State<AddTaskView> {
         Padding(
           padding: EdgeInsets.all(30.0),
           child: TextField(
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "What are you going to do?",
-              ),
-              style: TextStyle(fontWeight: FontWeight.w200, color: Colors.grey),
-              onChanged: (value) {
-                setState(() {
-                  newTaskTitle = value;
-                });
-              }),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: "What are you going to do?",
+            ),
+            style: TextStyle(fontWeight: FontWeight.w200, color: Colors.grey),
+          ),
         ),
         GestureDetector(
           onTap: () {
+            String taskTitle = _controller.text;
             if (onAddTask != null && newTaskTitle.isNotEmpty) {
-              onAddTask!(newTaskTitle);
+              onAddTask!(taskTitle);
               Navigator.pop(context);
             }
           },
