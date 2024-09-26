@@ -1,0 +1,39 @@
+@api_key = 9503fb55-490f-4e3b-a878-c3d9337138ff
+@host = https://todoapp-api.apps.k8s.gu.se
+@todoId = 2ad16174-b83d-470d-b76f-b8932d7f873d
+
+# @name register
+#Get your API key
+GET {{host}}/register
+####
+#List todos.
+#Will return an array of todos.
+GET {{host}}/todos?key={{api_key}}
+
+###
+# Add todo.
+# Takes a Todo as payload (body). Remember to set the Content-Type header to application/json.
+# Will return the entire list of todos, including the added Todo, when successful.
+POST {{host}}/todos?key={{api_key}}
+Content-Type: application/json
+
+{
+  "title": "Must pack bags 2",
+  "done": false
+}
+
+###
+# Update todo with {{todoId}}
+# Takes a Todo as payload (body), and updates title and done for the already existing Todo with id in URL.
+PUT {{host}}/todos/{{todoId}}?key={{api_key}}
+Content-Type: application/json
+
+{
+  "title": "Must pack bags 2",
+  "done": true
+}
+
+####
+#Deletes a Todo with id in URL
+
+DELETE {{host}}/todos/{{todoId}}?key={{api_key}}
