@@ -1,7 +1,73 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:uppgift_1/add_task_view.dart';
+import 'package:http/http.dart' as http;
+import 'package:uppgift_1/models/todo_item.dart';
 
 enum FilteringOptions { all, done, undone }
+
+Future<List<TodoItem>> fetchTodoItem() async {
+  final response = await http.get(Uri.parse(
+      'https://todoapp-api.apps.k8s.gu.se/todos?key=9503fb55-490f-4e3b-a878-c3d9337138ff'));
+
+  if (response.statusCode == 200) {
+    return fromListJson(jsonDecode(response.body) as List);
+  } else {
+    throw Exception("Failed to load todo item");
+  }
+}
+
+Future<List<TodoItem>> addTaskToServer(String taskTitle) async {
+  final response = await http.post(
+    Uri.parse(
+        'https://todoapp-api.apps.k8s.gu.se/todos?key=9503fb55-490f-4e3b-a878-c3d9337138ff'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(<String, dynamic>{
+      'title': taskTitle,
+      'done': false,
+    }),
+  );
+  if (response.statusCode == 200) {
+    return fromListJson(jsonDecode(response.body) as List);
+  } else {
+    throw Exception("Failed to add task");
+  }
+}
+
+Future<List<TodoItem>> updateTaskOnServer(
+    String id, bool isCompleted, String taskTitle) async {
+  final response = await http.put(
+    Uri.parse(
+        'https://todoapp-api.apps.k8s.gu.se/todos/$id?key=9503fb55-490f-4e3b-a878-c3d9337138ff'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(<String, dynamic>{
+      'title': taskTitle,
+      'done': isCompleted,
+    }),
+  );
+  if (response.statusCode == 200) {
+    return fromListJson(jsonDecode(response.body) as List);
+  } else {
+    throw Exception("Failed to update task");
+  }
+}
+
+Future<List<TodoItem>> deleteTaskFromServer(String id) async {
+  final response = await http.delete(
+    Uri.parse(
+        'https://todoapp-api.apps.k8s.gu.se/todos/$id?key=9503fb55-490f-4e3b-a878-c3d9337138ff'),
+  );
+  if (response.statusCode == 200) {
+    return fromListJson(jsonDecode(response.body) as List);
+  } else {
+    throw Exception("Failed to delete task");
+  }
+}
 
 void main() {
   runApp(
@@ -27,6 +93,13 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   FilteringOptions? selectedOption = FilteringOptions.all;
   List<Task> todoItems = [];
+  late Future<List<TodoItem>> futureTodoItem;
+
+  @override
+  void initState() {
+    super.initState();
+    futureTodoItem = fetchTodoItem();
+  }
 
   List<Task> getFilteredTasks() {
     if (selectedOption == FilteringOptions.done) {
@@ -37,9 +110,17 @@ class _MyHomePageState extends State<MyHomePage> {
     return todoItems;
   }
 
+  List<TodoItem> getFilteredTasksFuture(List<TodoItem> list) {
+    if (selectedOption == FilteringOptions.done) {
+      return list.where((task) => task.done).toList();
+    } else if (selectedOption == FilteringOptions.undone) {
+      return list.where((task) => !task.done).toList();
+    }
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<Task> filteredTasks = getFilteredTasks();
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -71,23 +152,19 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      body: ListView.separated(
-        itemCount: filteredTasks.length,
-        itemBuilder: (context, index) => TaskItem(
-          task: filteredTasks[index],
-          onChanged: (newValue) {
-            setState(() {
-              filteredTasks[index].isCompleted = newValue;
-            });
-          },
-          onDelete: () {
-            setState(() {
-              todoItems.remove(filteredTasks[index]);
-            });
-          },
-        ),
-        separatorBuilder: (context, index) => const Divider(),
-      ),
+      body: FutureBuilder<List<TodoItem>>(
+          future: futureTodoItem,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              var filteredTasks = getFilteredTasksFuture(snapshot.requireData);
+              return _buildDataView(filteredTasks);
+            } else if (snapshot.hasError) {
+              return Text('${snapshot.error}');
+            }
+
+            // By default, show a loading spinner.
+            return const CircularProgressIndicator();
+          }),
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
         onPressed: () {
@@ -97,7 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
               builder: (context) => AddTaskView(
                 onAddTask: (taskTitle) {
                   setState(() {
-                    todoItems.add(Task(taskTitle));
+                    futureTodoItem = addTaskToServer(taskTitle);
                   });
                 },
               ),
@@ -110,14 +187,35 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
+
+  ListView _buildDataView(List<TodoItem> filteredTasks) {
+    return ListView.separated(
+      itemCount: filteredTasks.length,
+      itemBuilder: (context, index) => TaskItemWidget(
+        task: filteredTasks[index],
+        onChanged: (newValue) {
+          setState(() {
+            futureTodoItem = updateTaskOnServer(
+                filteredTasks[index].id, newValue, filteredTasks[index].title);
+          });
+        },
+        onDelete: () async {
+          setState(() {
+            futureTodoItem = deleteTaskFromServer(filteredTasks[index].id);
+          });
+        },
+      ),
+      separatorBuilder: (context, index) => const Divider(),
+    );
+  }
 }
 
-class TaskItem extends StatelessWidget {
-  final Task task;
+class TaskItemWidget extends StatelessWidget {
+  final TodoItem task;
   final ValueChanged<bool> onChanged;
   final VoidCallback onDelete;
 
-  const TaskItem({
+  const TaskItemWidget({
     Key? key,
     required this.task,
     required this.onChanged,
@@ -137,15 +235,16 @@ class TaskItem extends StatelessWidget {
             child: Row(
               children: [
                 Checkbox(
-                  value: task.isCompleted,
-                  onChanged: (newValue) {
-                    onChanged(newValue ?? false);
+                  value: task.done,
+                  onChanged: (newValue) async {
+                    await updateTaskOnServer(task.id, newValue!, task.title);
+                    onChanged(newValue);
                   },
                 ),
                 Text(task.title,
                     style: TextStyle(
                         fontSize: 21,
-                        decoration: task.isCompleted
+                        decoration: task.done
                             ? TextDecoration.lineThrough
                             : TextDecoration.none)),
               ],

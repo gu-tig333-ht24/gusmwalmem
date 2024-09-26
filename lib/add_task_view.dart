@@ -33,18 +33,24 @@ class _AddTaskViewState extends State<AddTaskView> {
         Padding(
           padding: EdgeInsets.all(30.0),
           child: TextField(
+            controller: _controller,
             decoration: InputDecoration(
               border: OutlineInputBorder(),
               hintText: "What are you going to do?",
             ),
             style: TextStyle(fontWeight: FontWeight.w200, color: Colors.grey),
+            onChanged: (text) {
+              newTaskTitle = text;
+            },
           ),
         ),
         GestureDetector(
           onTap: () {
             String taskTitle = _controller.text;
-            if (onAddTask != null && newTaskTitle.isNotEmpty) {
-              onAddTask!(taskTitle);
+            if (newTaskTitle.isNotEmpty) {
+              if (onAddTask != null) {
+                onAddTask!(taskTitle);
+              }
               Navigator.pop(context);
             }
           },
