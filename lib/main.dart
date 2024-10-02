@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:uppgift_1/add_task_view.dart';
+import 'package:uppgift_1/api/todo_api.dart';
+import 'package:uppgift_1/models/todo_item.dart';
 
 enum FilteringOptions { all, done, undone }
+
+var todoApi = TodoApi("https://todoapp-api.apps.k8s.gu.se",
+    "9503fb55-490f-4e3b-a878-c3d9337138ff");
 
 void main() {
   runApp(
@@ -27,19 +32,25 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   FilteringOptions? selectedOption = FilteringOptions.all;
   List<Task> todoItems = [];
+  late Future<List<TodoItem>> futureTodoItem;
 
-  List<Task> getFilteredTasks() {
+  @override
+  void initState() {
+    super.initState();
+    futureTodoItem = todoApi.fetchTodoItem();
+  }
+
+  List<TodoItem> getFilteredTasksFuture(List<TodoItem> list) {
     if (selectedOption == FilteringOptions.done) {
-      return todoItems.where((task) => task.isCompleted).toList();
+      return list.where((task) => task.done).toList();
     } else if (selectedOption == FilteringOptions.undone) {
-      return todoItems.where((task) => !task.isCompleted).toList();
+      return list.where((task) => !task.done).toList();
     }
-    return todoItems;
+    return list;
   }
 
   @override
   Widget build(BuildContext context) {
-    List<Task> filteredTasks = getFilteredTasks();
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -71,23 +82,19 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      body: ListView.separated(
-        itemCount: filteredTasks.length,
-        itemBuilder: (context, index) => TaskItem(
-          task: filteredTasks[index],
-          onChanged: (newValue) {
-            setState(() {
-              filteredTasks[index].isCompleted = newValue;
-            });
-          },
-          onDelete: () {
-            setState(() {
-              todoItems.remove(filteredTasks[index]);
-            });
-          },
-        ),
-        separatorBuilder: (context, index) => const Divider(),
-      ),
+      body: FutureBuilder<List<TodoItem>>(
+          future: futureTodoItem,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              var filteredTasks = getFilteredTasksFuture(snapshot.requireData);
+              return _buildDataView(filteredTasks);
+            } else if (snapshot.hasError) {
+              return Text('${snapshot.error}');
+            }
+
+            // By default, show a loading spinner.
+            return const CircularProgressIndicator();
+          }),
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
         onPressed: () {
@@ -97,7 +104,7 @@ class _MyHomePageState extends State<MyHomePage> {
               builder: (context) => AddTaskView(
                 onAddTask: (taskTitle) {
                   setState(() {
-                    todoItems.add(Task(taskTitle));
+                    futureTodoItem = todoApi.addTaskToServer(taskTitle);
                   });
                 },
               ),
@@ -110,14 +117,36 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
+
+  ListView _buildDataView(List<TodoItem> filteredTasks) {
+    return ListView.separated(
+      itemCount: filteredTasks.length,
+      itemBuilder: (context, index) => TaskItemWidget(
+        task: filteredTasks[index],
+        onChanged: (newValue) {
+          setState(() {
+            futureTodoItem = todoApi.updateTaskOnServer(
+                filteredTasks[index].id, newValue, filteredTasks[index].title);
+          });
+        },
+        onDelete: () async {
+          setState(() {
+            futureTodoItem =
+                todoApi.deleteTaskFromServer(filteredTasks[index].id);
+          });
+        },
+      ),
+      separatorBuilder: (context, index) => const Divider(),
+    );
+  }
 }
 
-class TaskItem extends StatelessWidget {
-  final Task task;
+class TaskItemWidget extends StatelessWidget {
+  final TodoItem task;
   final ValueChanged<bool> onChanged;
   final VoidCallback onDelete;
 
-  const TaskItem({
+  const TaskItemWidget({
     Key? key,
     required this.task,
     required this.onChanged,
@@ -137,15 +166,15 @@ class TaskItem extends StatelessWidget {
             child: Row(
               children: [
                 Checkbox(
-                  value: task.isCompleted,
-                  onChanged: (newValue) {
-                    onChanged(newValue ?? false);
+                  value: task.done,
+                  onChanged: (newValue) async {
+                    onChanged(newValue!);
                   },
                 ),
                 Text(task.title,
                     style: TextStyle(
                         fontSize: 21,
-                        decoration: task.isCompleted
+                        decoration: task.done
                             ? TextDecoration.lineThrough
                             : TextDecoration.none)),
               ],
